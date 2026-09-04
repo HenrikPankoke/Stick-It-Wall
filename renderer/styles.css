@@ -1,0 +1,416 @@
+:root {
+  --tool-bg: rgba(30, 32, 38, 0.82);
+  --tool-fg: #f2f2f2;
+  --accent: #4a90d9;
+  --note-shadow: 0 6px 16px rgba(0, 0, 0, 0.28), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --font: -apple-system, "Segoe UI", Roboto, system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+/* Editable fields must allow caret + selection despite the global lock below.
+   Cursor is left to inherit (so a note/header shows its "grab" hand across the
+   whole surface); it only becomes a text caret once the field is focused for
+   editing. */
+[contenteditable="true"] { user-select: text; -webkit-user-select: text; }
+[contenteditable="true"]:focus { cursor: text; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font);
+  background: transparent;
+  user-select: none;
+  cursor: default;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Background paint layer                                                      */
+/* -------------------------------------------------------------------------- */
+#bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;      /* the wall handles interaction, not the paint */
+  background-repeat: repeat;
+  background-position: top left;
+}
+
+/* Rounded card look only when a background is actually painted. */
+body.has-bg #bg-layer { border-radius: 10px; }
+
+/* -------------------------------------------------------------------------- */
+/* Dashed window outline (transparent mode, while dragging)                   */
+/* -------------------------------------------------------------------------- */
+#window-outline {
+  position: fixed;
+  inset: 2px;
+  z-index: 5;
+  border: 2px dashed rgba(120, 120, 120, 0.9);
+  border-radius: 10px;
+  pointer-events: none;
+}
+body.transparent #window-outline.persistent { display: block; }
+
+/* -------------------------------------------------------------------------- */
+/* Wall + links                                                               */
+/* -------------------------------------------------------------------------- */
+#wall {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+}
+#links {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+#links line { stroke: rgba(80, 80, 80, 0.55); stroke-width: 2; stroke-dasharray: 4 4; }
+
+/* -------------------------------------------------------------------------- */
+/* Notes                                                                      */
+/* -------------------------------------------------------------------------- */
+.note {
+  position: absolute;
+  min-width: 120px;
+  min-height: 90px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 3px;
+  box-shadow: var(--note-shadow);
+  color: #222;
+  font-size: 13px;
+  transform: rotate(var(--rot, 0deg));
+  transition: box-shadow .12s ease;
+  cursor: grab;                 /* the whole note is a drag handle */
+}
+.note:active { cursor: grabbing; }
+.note.selected { box-shadow: 0 0 0 2px var(--accent), var(--note-shadow); z-index: 50; }
+.note.anchored, .note.anchored .note-head { cursor: default; }
+.note.anchored::after {
+  content: "📌";
+  position: absolute;
+  top: -10px;
+  left: -8px;
+  font-size: 15px;
+  transform: rotate(-20deg);
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,.3));
+}
+
+.note-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px 2px;
+  cursor: grab;
+  font-weight: 700;
+}
+.note-head:active { cursor: grabbing; }
+.note-title {
+  flex: 1;
+  outline: none;
+  min-height: 16px;
+  overflow-wrap: anywhere;
+}
+.note-title:empty::before { content: "Title"; opacity: .4; }
+
+.note-body {
+  flex: 1;
+  padding: 2px 8px 6px;
+  outline: none;
+  overflow: auto;
+  font-weight: 400;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.note-body:empty::before { content: "Write something…"; opacity: .4; }
+
+.note-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 8px 6px;
+  font-size: 10.5px;
+  opacity: .8;
+}
+.note-tag {
+  outline: none;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  max-width: 60%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.note-tag:empty::before { content: "tag"; opacity: .5; }
+.note-date { white-space: nowrap; }
+
+/* per-note toolbar (shown when selected) */
+.note-tools {
+  position: absolute;
+  top: -30px;
+  left: 0;
+  display: none;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 4px;
+  background: var(--tool-bg);
+  border-radius: 6px;
+  z-index: 60;
+}
+.note.selected .note-tools { display: flex; }
+.note-tools .swatch {
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.5); cursor: pointer;
+}
+.note-tools button {
+  background: transparent; border: 0; color: var(--tool-fg);
+  font-size: 13px; cursor: pointer; padding: 1px 4px; border-radius: 4px;
+}
+.note-tools button:hover { background: rgba(255,255,255,.15); }
+.note-tools .divider { width: 1px; height: 16px; background: rgba(255,255,255,.25); margin: 0 2px; }
+
+/* resize handle */
+.note-resize {
+  position: absolute;
+  right: 0; bottom: 0;
+  width: 16px; height: 16px;
+  cursor: nwse-resize;
+  background:
+    linear-gradient(135deg, transparent 50%, rgba(0,0,0,.25) 50%, rgba(0,0,0,.25) 60%, transparent 60%, transparent 72%, rgba(0,0,0,.25) 72%, rgba(0,0,0,.25) 82%, transparent 82%);
+  border-bottom-right-radius: 3px;
+}
+
+/* linking mode highlight */
+body.linking .header { outline: 2px dashed var(--accent); cursor: crosshair; }
+
+/* -------------------------------------------------------------------------- */
+/* Headers                                                                    */
+/* -------------------------------------------------------------------------- */
+.header {
+  position: absolute;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: .3px;
+  color: #fff;
+  box-shadow: var(--note-shadow);
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.header:active { cursor: grabbing; }
+.header.selected { box-shadow: 0 0 0 2px #fff, var(--note-shadow); }
+.header-text { outline: none; min-width: 40px; }
+.header-text:empty::before { content: "Header"; opacity: .5; }
+.header.anchored { cursor: default; }
+.header-tools {
+  position: absolute;
+  top: -30px; left: 0;
+  display: none;
+  gap: 3px; padding: 3px 4px;
+  background: var(--tool-bg); border-radius: 6px; z-index: 60;
+}
+.header.selected .header-tools { display: flex; }
+.header-tools .swatch { width: 15px; height: 15px; border-radius: 50%; border: 1px solid rgba(255,255,255,.5); cursor: pointer; }
+.header-tools button { background: transparent; border: 0; color: var(--tool-fg); font-size: 13px; cursor: pointer; padding: 1px 4px; border-radius: 4px; }
+.header-tools button:hover { background: rgba(255,255,255,.15); }
+
+/* -------------------------------------------------------------------------- */
+/* Resize grips                                                               */
+/* -------------------------------------------------------------------------- */
+.grip { position: fixed; z-index: 40; }
+.grip[data-dir="n"]  { top: 0; left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
+.grip[data-dir="s"]  { bottom: 0; left: 10px; right: 10px; height: 6px; cursor: ns-resize; }
+.grip[data-dir="e"]  { top: 10px; bottom: 10px; right: 0; width: 6px; cursor: ew-resize; }
+.grip[data-dir="w"]  { top: 10px; bottom: 10px; left: 0; width: 6px; cursor: ew-resize; }
+.grip[data-dir="nw"] { top: 0; left: 0; width: 14px; height: 14px; cursor: nwse-resize; }
+.grip[data-dir="ne"] { top: 0; right: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+.grip[data-dir="se"] { bottom: 0; right: 0; width: 14px; height: 14px; cursor: nwse-resize; }
+.grip[data-dir="sw"] { bottom: 0; left: 0; width: 14px; height: 14px; cursor: nesw-resize; }
+
+/* -------------------------------------------------------------------------- */
+/* Hotzones + floating toolbars                                               */
+/* -------------------------------------------------------------------------- */
+.hotzone { position: fixed; top: 0; width: 400px; height: 64px; z-index: 45; pointer-events: none; }
+#hotzone-tl { left: 0; }
+#hotzone-tr { right: 0; width: 90px; display: flex; justify-content: flex-end; }
+
+.floatbar {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  margin: 8px;
+  background: var(--tool-bg);
+  border-radius: 8px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .12s ease, transform .12s ease;
+  pointer-events: none;
+}
+#hotzone-tl.pinned .floatbar { opacity: 1; transform: none; pointer-events: auto; }
+
+.tool {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,.08);
+  color: var(--tool-fg);
+  border: 0; border-radius: 6px;
+  font-size: 15px; cursor: pointer;
+}
+.tool:hover { background: rgba(255,255,255,.22); }
+#move-handle { -webkit-app-region: drag; cursor: move; }
+
+.tool-divider { width: 1px; height: 20px; align-self: center; background: rgba(255,255,255,.25); margin: 0 2px; }
+
+.preset-btn { font-weight: 700; font-size: 13px; position: relative; }
+.preset-btn.has-preset::after {
+  content: "";
+  position: absolute;
+  bottom: 3px; left: 50%;
+  width: 4px; height: 4px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: var(--accent);
+}
+.preset-btn.active::after { background: #2ecc71; box-shadow: 0 0 4px rgba(46, 204, 113, .8); }
+
+.tool.close {
+  margin: 8px;
+  width: 30px; height: 30px;
+  background: rgba(210, 60, 60, 0.0);
+  color: #d34;
+  font-size: 16px;
+  opacity: 0;
+  transition: opacity .12s ease;
+}
+#hotzone-tr.pinned .tool.close { opacity: 1; background: rgba(210,60,60,.9); color: #fff; pointer-events: auto; }
+
+/* -------------------------------------------------------------------------- */
+/* Settings panel                                                             */
+/* -------------------------------------------------------------------------- */
+.panel {
+  position: fixed;
+  top: 52px; left: 12px;
+  width: 280px;
+  z-index: 80;
+  background: rgba(28, 30, 36, 0.96);
+  color: #eee;
+  border-radius: 10px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.5);
+  font-size: 13px;
+  overflow: hidden;
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px; font-weight: 700;
+  background: rgba(255,255,255,.06);
+}
+.panel-close { background: transparent; border: 0; color: #ccc; cursor: pointer; font-size: 14px; }
+.panel-body { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field > span { opacity: .8; font-size: 12px; }
+.field.checkbox { flex-direction: row; align-items: center; gap: 8px; }
+.field .row { display: flex; gap: 8px; align-items: center; }
+.field em { font-style: normal; opacity: .6; }
+select, input[type="range"], input[type="color"] {
+  width: 100%; background: rgba(255,255,255,.08); color: #eee;
+  border: 1px solid rgba(255,255,255,.12); border-radius: 6px; padding: 5px;
+}
+select option {
+  background: #1c1e24; color: #eee;
+}
+select option:checked, select option:hover {
+  background: var(--accent); color: #fff;
+}
+input[type="color"] { height: 32px; padding: 2px; }
+.mini {
+  background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+  padding: 6px 10px; cursor: pointer; font-size: 12px;
+}
+.mini:hover { filter: brightness(1.08); }
+.hint { margin: 0; font-size: 11px; opacity: .6; line-height: 1.4; }
+
+/* -------------------------------------------------------------------------- */
+/* Context menu                                                               */
+/* -------------------------------------------------------------------------- */
+.ctx {
+  position: fixed;
+  z-index: 90;
+  min-width: 170px;
+  background: rgba(28, 30, 36, 0.98);
+  color: #eee;
+  border-radius: 8px;
+  padding: 5px;
+  box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  font-size: 13px;
+}
+.ctx button {
+  display: flex; width: 100%; align-items: center; gap: 8px;
+  background: transparent; border: 0; color: #eee; text-align: left;
+  padding: 7px 9px; border-radius: 5px; cursor: pointer;
+}
+.ctx button:hover { background: var(--accent); }
+.ctx .sep { height: 1px; background: rgba(255,255,255,.12); margin: 4px 2px; }
+.ctx-info { padding: 6px 9px 4px; font-size: 12px; }
+.ctx-info div { opacity: .65; line-height: 1.5; }
+.ctx-info div:first-child { opacity: .9; font-weight: 600; }
+.ctx .swrow { display: flex; gap: 6px; padding: 6px 9px; }
+.ctx .swatch { width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(255,255,255,.4); cursor: pointer; }
+
+/* -------------------------------------------------------------------------- */
+/* Welcome                                                                    */
+/* -------------------------------------------------------------------------- */
+.welcome {
+  position: fixed;
+  z-index: 85;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  background: rgba(28, 30, 36, 0.96);
+  color: #eee;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 16px 50px rgba(0,0,0,.5);
+}
+.welcome p { font-size: 13px; opacity: .85; line-height: 1.5; }
+
+/* -------------------------------------------------------------------------- */
+/* Confirmation modal                                                         */
+/* -------------------------------------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+}
+.modal {
+  width: 300px;
+  max-width: calc(100% - 32px);
+  background: rgba(28, 30, 36, 0.98);
+  color: #eee;
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, .5);
+}
+.modal-msg { margin: 0 0 16px; font-size: 13.5px; line-height: 1.5; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.mini.ghost { background: rgba(255,255,255,.12); }
+.mini.ghost:hover { background: rgba(255,255,255,.2); }
+.mini.danger { background: #d34a44; }
+.mini.danger:hover { background: #e0574a; }

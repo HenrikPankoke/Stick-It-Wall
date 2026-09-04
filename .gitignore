@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Local sample/scratch assets (not used by the app)
+background_1.png
+
+# Logs / OS cruft
+*.log
+Thumbs.db
+.DS_Store

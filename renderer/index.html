@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data: file:; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+  <title>Post-It Wall</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- The paint layer for the background (image / pattern / color / transparent). -->
+  <div id="bg-layer"></div>
+
+  <!-- Dashed outline of the window edge; shown while dragging in transparent mode. -->
+  <div id="window-outline" hidden></div>
+
+  <!-- Connector lines between headers and their linked notes. -->
+  <svg id="links" xmlns="http://www.w3.org/2000/svg"></svg>
+
+  <!-- The wall itself; notes and headers live here. -->
+  <div id="wall"></div>
+
+  <!-- Corner/edge resize grips (custom, since the window is frameless). -->
+  <div class="grip" data-dir="nw"></div>
+  <div class="grip" data-dir="n"></div>
+  <div class="grip" data-dir="ne"></div>
+  <div class="grip" data-dir="e"></div>
+  <div class="grip" data-dir="se"></div>
+  <div class="grip" data-dir="s"></div>
+  <div class="grip" data-dir="sw"></div>
+  <div class="grip" data-dir="w"></div>
+
+  <!-- Top-left hotzone: move + tools. -->
+  <div id="hotzone-tl" class="hotzone">
+    <div id="tools" class="floatbar">
+      <div id="move-handle" class="tool" title="Drag to move window">⠿</div>
+      <button class="tool" id="btn-add-note" title="Add note">＋</button>
+      <button class="tool" id="btn-add-header" title="Add header">H</button>
+      <button class="tool" id="btn-settings" title="Background &amp; settings">⚙</button>
+      <button class="tool" id="btn-minimize" title="Minimize to tray">＿</button>
+      <span class="tool-divider"></span>
+      <button class="tool preset-btn" data-slot="0" title="Click: switch to wall 1. Ctrl+click: save current window as wall 1.">1</button>
+      <button class="tool preset-btn" data-slot="1" title="Click: switch to wall 2. Ctrl+click: save current window as wall 2.">2</button>
+      <button class="tool preset-btn" data-slot="2" title="Click: switch to wall 3. Ctrl+click: save current window as wall 3.">3</button>
+      <button class="tool preset-btn" data-slot="3" title="Click: switch to wall 4. Ctrl+click: save current window as wall 4.">4</button>
+      <button class="tool preset-btn" data-slot="4" title="Click: switch to wall 5. Ctrl+click: save current window as wall 5.">5</button>
+    </div>
+  </div>
+
+  <!-- Top-right hotzone: close. -->
+  <div id="hotzone-tr" class="hotzone">
+    <button class="tool close" id="btn-close" title="Quit Post-It Wall">✕</button>
+  </div>
+
+  <!-- Settings panel. -->
+  <div id="settings-panel" class="panel" hidden>
+    <div class="panel-head">
+      <span>Wall settings</span>
+      <button class="panel-close" id="settings-close">✕</button>
+    </div>
+    <div class="panel-body">
+      <label class="field">
+        <span>Background</span>
+        <select id="set-bg-type">
+          <option value="pattern">Sample wall</option>
+          <option value="image">Custom image…</option>
+          <option value="color">Solid color</option>
+          <option value="none">Transparent</option>
+        </select>
+      </label>
+
+      <label class="field" id="field-pattern">
+        <span>Sample</span>
+        <select id="set-pattern">
+          <option value="cork">Cork board</option>
+          <option value="linen">Linen</option>
+          <option value="grid">Paper grid</option>
+          <option value="slate">Dark slate</option>
+        </select>
+      </label>
+
+      <div class="field" id="field-image">
+        <span>Image</span>
+        <div class="row">
+          <button id="set-pick-image" class="mini">Choose file…</button>
+          <select id="set-fit">
+            <option value="tile">Tile</option>
+            <option value="cover">Cover</option>
+          </select>
+        </div>
+      </div>
+
+      <label class="field" id="field-color">
+        <span>Color</span>
+        <input type="color" id="set-color" value="#1e3a5f" />
+      </label>
+
+      <label class="field" id="field-opacity">
+        <span>Opacity <em id="opacity-val">100%</em></span>
+        <input type="range" id="set-opacity" min="0" max="100" value="100" />
+      </label>
+
+      <label class="field checkbox" id="field-clickthrough">
+        <input type="checkbox" id="set-clickthrough" />
+        <span>Click-through to desktop (transparent only)</span>
+      </label>
+
+      <p class="hint" id="clickthrough-hint">
+        When transparent, clicks over empty wall pass to the desktop behind — the
+        wall blends in and only the notes stay interactive.
+      </p>
+    </div>
+  </div>
+
+  <!-- Custom right-click context menu. -->
+  <div id="context-menu" class="ctx" hidden></div>
+
+  <!-- Small first-run hint. -->
+  <div id="welcome" class="welcome" hidden>
+    <strong>Post-It Wall</strong>
+    <p>Double-click the wall to add a note. Hover the top-left corner for tools,
+       the top-right for close. Right-click for more.</p>
+    <button id="welcome-dismiss" class="mini">Got it</button>
+  </div>
+
+  <script src="bg-patterns.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
