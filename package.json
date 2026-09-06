@@ -1,0 +1,41 @@
+{
+  "name": "stick-it-wall",
+  "version": "1.0.0",
+  "description": "A transparent, always-on desktop wall of freely arranged sticky notes and headers.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "electron test/smoke-main.js",
+    "check": "node --check main.js && node --check preload.js && node --check renderer/app.js && node --check renderer/bg-patterns.js",
+    "build-icon": "node scripts/build-icon.js",
+    "dist": "npm run build-icon && electron-builder"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.stickitwall.app",
+    "productName": "Stick-It Wall",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.js",
+      "renderer/**/*",
+      "package.json"
+    ],
+    "icon": "build/icon.png",
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
