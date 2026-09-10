@@ -99,6 +99,17 @@ function defaultBounds(workArea, sizeHint) {
   };
 }
 
+// True if bounds meaningfully overlap some currently connected display's
+// work area (not just a 0px sliver at the edge).
+function isOnSomeDisplay(bounds) {
+  const MIN_OVERLAP = 40;
+  return screen.getAllDisplays().some(({ workArea: w }) => {
+    const overlapW = Math.min(bounds.x + bounds.width, w.x + w.width) - Math.max(bounds.x, w.x);
+    const overlapH = Math.min(bounds.y + bounds.height, w.y + w.height) - Math.max(bounds.y, w.y);
+    return overlapW >= MIN_OVERLAP && overlapH >= MIN_OVERLAP;
+  });
+}
+
 // Keep bounds fully inside a display's current work area (resolution/taskbar
 // may have changed since the bounds were captured).
 function clampToWorkArea(bounds, workArea) {
@@ -126,9 +137,17 @@ function createWindow() {
   const primary = screen.getPrimaryDisplay().workArea;
   const saved = state.settings.bounds;
 
-  const bounds = saved && Number.isFinite(saved.width)
-    ? saved
-    : defaultBounds(primary);
+  let bounds;
+  if (saved && Number.isFinite(saved.width) && isOnSomeDisplay(saved)) {
+    // Still clamp: the display holding these bounds may have shrunk (lower
+    // resolution, moved taskbar) since they were captured.
+    bounds = clampToWorkArea(saved, screen.getDisplayMatching(saved).workArea);
+  } else {
+    // Saved position is on a display that's no longer connected (e.g. an
+    // external monitor was unplugged) — fall back to the primary display
+    // instead of creating an off-screen, invisible window.
+    bounds = defaultBounds(primary, saved);
+  }
 
   win = new BrowserWindow({
     ...bounds,
