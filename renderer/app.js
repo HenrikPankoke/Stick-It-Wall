@@ -397,7 +397,7 @@ function wireNote(el, ref) {
   const body = el.querySelector('.note-body');
   const tag = el.querySelector('.note-tag');
   title.addEventListener('input', () => { const n = getNote(idOf()); if (n) { n.title = title.textContent; touch(n); persist(); } });
-  body.addEventListener('input', () => { const n = getNote(idOf()); if (n) { n.description = body.textContent; touch(n); persist(); } });
+  body.addEventListener('input', () => { const n = getNote(idOf()); if (n) { n.description = body.innerText; touch(n); persist(); } });
   tag.addEventListener('input', () => { const n = getNote(idOf()); if (n) { n.tag = tag.textContent; touch(n); persist(); } });
 
   // Toolbar

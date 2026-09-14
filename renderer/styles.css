@@ -128,8 +128,21 @@ body.transparent #window-outline.persistent { display: block; }
   font-weight: 400;
   line-height: 1.35;
   overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .note-body:empty::before { content: "Write something…"; opacity: .4; }
+
+/* Caret + selection contrast: note backgrounds are pastel/mid-brightness and
+   vary per-note, so Chromium's default caret/selection colors can blend in.
+   Force a dark, high-contrast caret and a selection tint that stays legible
+   against any note color. */
+.note-title, .note-body, .note-tag {
+  caret-color: #000;
+}
+.note-title::selection, .note-body::selection, .note-tag::selection {
+  background: rgba(74, 144, 217, 0.55);
+  color: #000;
+}
 
 .note-foot {
   display: flex;
