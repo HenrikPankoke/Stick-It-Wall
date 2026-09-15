@@ -1,6 +1,6 @@
 {
   "name": "stick-it-wall",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A transparent, always-on desktop wall of freely arranged sticky notes and headers.",
   "main": "main.js",
   "scripts": {

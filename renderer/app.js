@@ -29,6 +29,17 @@ let saveTimer = null;
 /* -------------------------------------------------------------------------- */
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
+// contenteditable's own caret/line-layout engine expects real <br>/block line
+// breaks (what pressing Enter produces), not "\n" inside a single text node —
+// the latter renders fine with white-space:pre-wrap but gives unreliable caret
+// placement on most lines. So saved text is turned into <br>-separated markup
+// on load instead of relying on a literal newline + pre-wrap.
+function textToEditableHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML.split('\n').join('<br>');
+}
+
 function persist() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(flushSave, 250);
@@ -159,7 +170,7 @@ function syncNoteEl(el, n) {
   const body = el.querySelector('.note-body');
   const tag = el.querySelector('.note-tag');
   if (document.activeElement !== title) title.textContent = n.title || '';
-  if (document.activeElement !== body) body.textContent = n.description || '';
+  if (document.activeElement !== body) body.innerHTML = textToEditableHtml(n.description || '');
   if (document.activeElement !== tag) tag.textContent = n.tag || '';
   el.querySelector('.note-date').textContent = fmtDate(n.updatedAt || n.createdAt);
 }
@@ -378,6 +389,15 @@ function blurEditing() {
 function wireNote(el, ref) {
   const idOf = () => el.dataset.id;
 
+  // Suspend the note's tilt for as long as one of its fields is being edited
+  // (see the .note.editing rule in styles.css for why).
+  el.addEventListener('focusin', (e) => {
+    if (e.target.isContentEditable) el.classList.add('editing');
+  });
+  el.addEventListener('focusout', (e) => {
+    if (!el.contains(e.relatedTarget)) el.classList.remove('editing');
+  });
+
   // The whole note is a drag handle. The click-vs-drag threshold in beginDrag
   // means a plain click still lands the caret in whatever field was clicked
   // (title / body / tag), while any real movement moves the note — so it can be
@@ -389,6 +409,12 @@ function wireNote(el, ref) {
     if (!n) return;
     if (document.body.classList.contains('linking')) return;
     select(n.id);
+    // If the field under the cursor is already the one being edited, leave the
+    // click alone — let the browser handle caret placement, drag-to-select and
+    // double/triple-click word/paragraph selection natively. Otherwise a drag
+    // gesture starting inside the text would be read as "move the note".
+    const editable = e.target.closest('[contenteditable="true"]');
+    if (editable && editable === document.activeElement) return;
     beginDrag(e, n, el, 'note');
   });
 
@@ -473,11 +499,12 @@ function wireHeader(el, ref) {
       return;
     }
     select(h.id);
-    if (!e.target.closest('.header-tools') && !e.target.classList.contains('header-text')) {
-      beginDrag(e, h, el, 'header');
-    } else if (e.target.classList.contains('header-text')) {
-      beginDrag(e, h, el, 'header'); // threshold: click still edits, drag moves
-    }
+    if (e.target.closest('.header-tools')) return;
+    // Same as notes: once the text is already focused, let native click/
+    // drag-select/double-click selection happen instead of reading the
+    // gesture as "move the header".
+    if (e.target.classList.contains('header-text') && e.target === document.activeElement) return;
+    beginDrag(e, h, el, 'header');
   });
 
   const txt = el.querySelector('.header-text');

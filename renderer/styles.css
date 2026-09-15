@@ -87,10 +87,15 @@ body.transparent #window-outline.persistent { display: block; }
   color: #222;
   font-size: 13px;
   transform: rotate(var(--rot, 0deg));
-  transition: box-shadow .12s ease;
+  transition: box-shadow .12s ease, transform .12s ease;
   cursor: grab;                 /* the whole note is a drag handle */
 }
 .note:active { cursor: grabbing; }
+/* The tilt is a CSS transform, and Chromium has a known bug where the
+   blinking text caret goes stale/invisible inside a transformed element.
+   So the tilt is suspended for as long as a field on the note is being
+   edited, and restored once editing ends. */
+.note.editing { transform: none; }
 .note.selected { box-shadow: 0 0 0 2px var(--accent), var(--note-shadow); z-index: 50; }
 .note.anchored, .note.anchored .note-head { cursor: default; }
 .note.anchored::after {
@@ -128,7 +133,6 @@ body.transparent #window-outline.persistent { display: block; }
   font-weight: 400;
   line-height: 1.35;
   overflow-wrap: anywhere;
-  white-space: pre-wrap;
 }
 .note-body:empty::before { content: "Write something…"; opacity: .4; }
 
