@@ -87,10 +87,15 @@ body.transparent #window-outline.persistent { display: block; }
   color: #222;
   font-size: 13px;
   transform: rotate(var(--rot, 0deg));
-  transition: box-shadow .12s ease;
+  transition: box-shadow .12s ease, transform .12s ease;
   cursor: grab;                 /* the whole note is a drag handle */
 }
 .note:active { cursor: grabbing; }
+/* The tilt is a CSS transform, and Chromium has a known bug where the
+   blinking text caret goes stale/invisible inside a transformed element.
+   So the tilt is suspended for as long as a field on the note is being
+   edited, and restored once editing ends. */
+.note.editing { transform: none; }
 .note.selected { box-shadow: 0 0 0 2px var(--accent), var(--note-shadow); z-index: 50; }
 .note.anchored, .note.anchored .note-head { cursor: default; }
 .note.anchored::after {
@@ -130,6 +135,18 @@ body.transparent #window-outline.persistent { display: block; }
   overflow-wrap: anywhere;
 }
 .note-body:empty::before { content: "Write something…"; opacity: .4; }
+
+/* Caret + selection contrast: note backgrounds are pastel/mid-brightness and
+   vary per-note, so Chromium's default caret/selection colors can blend in.
+   Force a dark, high-contrast caret and a selection tint that stays legible
+   against any note color. */
+.note-title, .note-body, .note-tag {
+  caret-color: #000;
+}
+.note-title::selection, .note-body::selection, .note-tag::selection {
+  background: rgba(74, 144, 217, 0.55);
+  color: #000;
+}
 
 .note-foot {
   display: flex;
